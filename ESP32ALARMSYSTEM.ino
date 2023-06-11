@@ -1,15 +1,26 @@
 #include <Keypad.h>
 #include <string.h>
-#include "BluetoothSerial.h" 
+#include <WiFi.h>
+#include <WiFiClient.h>
+#include <BlynkSimpleEsp32.h>
+#include "BluetoothSerial.h"
 #if !defined(CONFIG_BT_ENABLED) || !defined(CONFIG_BLUEDROID_ENABLED) 
 #error Bluetooth is not enabled! Please run 'make menuconfig' to and enable it 
 #endif
 
+#define BLYNK_TEMPLATE_ID "TMPL5quwn_Id9"
+#define BLYNK_TEMPLATE_NAME "SecuritySystem"
+#define BLYNK_AUTH_TOKEN "75K3OnbfJZNOwzEhMcWKokC7nBKMLEtf"
+
+#define BLYNK_PRINT Serial
 
 #define ROW_NUM     4 // four rows
 #define COLUMN_NUM  4 // four columns
 const String keyCode = "1234";
 const String masterKeyCode = "0000";
+
+char ssid[] = "MEO-9A8E10";
+char pass[] = "e7642fef10";
 
 char keys[ROW_NUM][COLUMN_NUM] = {
   {'1', '2', '3', 'A'},
@@ -39,7 +50,25 @@ int btnLastState = LOW;
 int btnCurrentState;
 int btnPin = 25;
 
-BluetoothSerial SerialBT; 
+bool trigWindow;
+//bool trigQuarto;
+bool trigSala;
+
+BluetoothSerial SerialBT;
+
+BLYNK_WRITE(V0)
+{
+  // Set incoming value from pin V0 to a variable
+  int value = param.asInt();
+  if(value == 1){
+    alarmStatus = true;
+    lock();
+  }
+  else{
+    alarmStatus = false;
+    unlock();
+  }
+}
 
 void setup() {
   // put your setup code here, to run once:
@@ -47,13 +76,14 @@ void setup() {
   pinMode(BUZZER_PIN, OUTPUT);
   pinMode(btnPin, INPUT_PULLUP);
   lock();
-
+  Blynk.begin(BLYNK_AUTH_TOKEN, ssid, pass);
   SerialBT.begin("ESP32_SECURITY_SYSTEM"); 
 	Serial.println("Ligação disponível");
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
+  Blynk.run();
   keyPad();
   alarme();
   btCode();
@@ -63,6 +93,8 @@ void loop() {
 void unlock()
 {
   alarmOff();
+  Blynk.virtualWrite(V1, 0);
+  Blynk.virtualWrite(V2, 0);
   tentativas = 3;
   alarmStatus = false;
 }
@@ -124,6 +156,7 @@ void keyPad(){
 
 void alarmOn()
 {
+  Blynk.logEvent("intruso_detetado");
   digitalWrite(BUZZER_PIN, HIGH);
 }
 
@@ -147,6 +180,7 @@ void chao()
 
   if(lastState >= VALUE_THRESHOLD  && currentState < VALUE_THRESHOLD)
   {
+    Blynk.virtualWrite(V1, 1);
     Serial.println("Movement!");
     SerialBT.println("Movement");
     alarmOn();
@@ -160,6 +194,7 @@ void janela()
 
   if(btnLastState == LOW && btnCurrentState == HIGH)
   {
+    Blynk.virtualWrite(V2, 1);
     Serial.println("Window open");
     SerialBT.println("Window open");
     alarmOn();
