@@ -50,11 +50,13 @@ int btnLastState = LOW;
 int btnCurrentState;
 int btnPin = 25;
 
-bool trigWindow;
-//bool trigQuarto;
-bool trigSala;
-
 BluetoothSerial SerialBT;
+
+const unsigned long executiontime = 10000; 
+unsigned long pasttime = 0;
+unsigned long presenttime = 0;
+
+bool locked = false;
 
 BLYNK_WRITE(V0)
 {
@@ -82,12 +84,25 @@ void setup() {
 }
 
 void loop() {
+  presenttime = millis();
   // put your main code here, to run repeatedly:
   Blynk.run();
   keyPad();
   alarme();
   btCode();
-  
+  verifyLock();
+}
+
+void verifyLock(){
+  if(locked){
+      if (presenttime - pasttime >= executiontime) 
+      {
+        sendMsg("Write the password");
+        tentativas = 0;
+        locked = !locked;
+        pasttime = presenttime;
+      }
+  }
 }
 
 void unlock()
@@ -122,7 +137,7 @@ void keyPad(){
         Serial.println("The password is correct!\nAlarm disabled...");
         unlock();
       }
-      else if(input_password == masterKeyCode && alarmStatus && tentativas == 0)
+      else if(input_password == masterKeyCode && alarmStatus && tentativas <= 0 && !locked)
       {
         Serial.println("The master password is correct!\nAlarm disabled...");
         unlock();
@@ -139,10 +154,17 @@ void keyPad(){
         {
           tentativas--;
         }
-        if(tentativas == 0)
+        if(tentativas <= 0)
         {
-          Serial.println("Introduza a mster key para desativar o alarme!");
+          tentativas--;
+          Serial.println("Introduza a master key para desativar o alarme!");
           alarmOn();
+        }
+        if(tentativas <= -3)
+        {
+          locked = true;
+          pasttime = presenttime;
+          Serial.println("Aguarde 10 segundos até introduzir novamente a mesterkey!\n");
         }
       }
       input_password = "";
@@ -181,8 +203,7 @@ void chao()
   if(lastState >= VALUE_THRESHOLD  && currentState < VALUE_THRESHOLD)
   {
     Blynk.virtualWrite(V1, 1);
-    Serial.println("Movement!");
-    SerialBT.println("Movement");
+    sendMsg("Movement!");
     alarmOn();
   }
   lastState = currentState;
@@ -195,8 +216,7 @@ void janela()
   if(btnLastState == LOW && btnCurrentState == HIGH)
   {
     Blynk.virtualWrite(V2, 1);
-    Serial.println("Window open");
-    SerialBT.println("Window open");
+    sendMsg("Window open");
     alarmOn();
   }
 
@@ -210,35 +230,37 @@ void btCode(){
     String bt_input = SerialBT.readStringUntil('\n');
     if((compareString(bt_input, keyCode) || compareString(bt_input, masterKeyCode)) && alarmStatus && tentativas > 0)
     { 
-      Serial.println("The password is correct!\nAlarm disabled...");
-      SerialBT.println("The password is correct!\nAlarm disabled...");
+      sendMsg("The password is correct!\nAlarm disabled...");
       unlock();
     }
-    else if(compareString(bt_input, masterKeyCode) && alarmStatus && tentativas == 0)
+    else if(compareString(bt_input, masterKeyCode) && alarmStatus && tentativas <= 0  && !locked)
     {
-      Serial.println("The master password is correct!\nAlarm disabled...");
-      SerialBT.println("The master password is correct!\nAlarm disabled...");
+      sendMsg("The master password is correct!\nAlarm disabled...");
       unlock();
     }
     else if((compareString(bt_input, keyCode) || compareString(bt_input, masterKeyCode)) && !alarmStatus)
     {
-      Serial.println("The password is correct!\nAlarm enabled...");
-      SerialBT.println("The password is correct!\nAlarm enabled...");
+      sendMsg("The password is correct!\nAlarm enabled...");
       lock();
     }
     else
     {
-      Serial.println("Wrong password!");
-      SerialBT.println("Wrong password!");
+      sendMsg("Wrong password!");
       if (tentativas > 0)
       {
         tentativas--;
       }
-      if(tentativas == 0)
+      if(tentativas <= 0)
       {
-        Serial.println("Introduza a mster key para desativar o alarme!");
-        SerialBT.println("Introduza a mster key para desativar o alarme!");
+        tentativas--;
+        sendMsg("Introduza a mster key para desativar o alarme!");
         alarmOn();
+      }
+      if(tentativas <= -3)
+      {
+        locked = true;
+        pasttime = presenttime;
+        sendMsg("Aguarde 10 segundos até introduzir novamente a mesterkey!\n");
       }
     }
   }
@@ -264,4 +286,10 @@ bool compareString(String input, String b)
     }
   }
   return result;
+}
+
+void sendMsg(String msg)
+{
+  Serial.println(msg);
+  SerialBT.println(msg);
 }
