@@ -38,35 +38,45 @@ String input_password;
 
 bool alarmStatus;
 int tentativas;
+bool locked = false;
 
+//Buzzer
 int BUZZER_PIN = 26;
 
+//Touch
 int lastState = 30;
 int currentState;
 const int VALUE_THRESHOLD = 30;
 int touchPin = 13;
 
+//Button
 int btnLastState = LOW;
 int btnCurrentState;
 int btnPin = 25;
 
 BluetoothSerial SerialBT;
 
+//Not using Delay
 const unsigned long executiontime = 10000; 
 unsigned long pasttime = 0;
 unsigned long presenttime = 0;
 
-bool locked = false;
+//LEDS
+const int RED_PIN = 21;
+const int GREEN_PIN = 12;
+const int LIGHT_PIN = 14;
 
 BLYNK_WRITE(V0)
 {
   // Set incoming value from pin V0 to a variable
   int value = param.asInt();
-  if(value == 1){
+  if(value == 1)
+  {
     alarmStatus = true;
     lock();
   }
-  else{
+  else
+  {
     alarmStatus = false;
     unlock();
   }
@@ -77,6 +87,9 @@ void setup() {
   Serial.begin(115200);
   pinMode(BUZZER_PIN, OUTPUT);
   pinMode(btnPin, INPUT_PULLUP);
+  pinMode(RED_PIN, OUTPUT);
+  pinMode(GREEN_PIN, OUTPUT);
+  pinMode(LIGHT_PIN, OUTPUT);
   lock();
   Blynk.begin(BLYNK_AUTH_TOKEN, ssid, pass);
   SerialBT.begin("ESP32_SECURITY_SYSTEM"); 
@@ -292,4 +305,16 @@ void sendMsg(String msg)
 {
   Serial.println(msg);
   SerialBT.println(msg);
+}
+
+void ligarLedVermelho()
+{
+  digitalWrite(GREEN_PIN, LOW);
+  digitalWrite(RED_PIN, HIGH);
+}
+
+void desligarLedVermelho()
+{
+  digitalWrite(GREEN_PIN, HIGH);
+  digitalWrite(RED_PIN, LOW);
 }
