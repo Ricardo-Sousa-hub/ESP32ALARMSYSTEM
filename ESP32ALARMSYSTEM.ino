@@ -19,8 +19,8 @@
 const String keyCode = "1234";
 const String masterKeyCode = "0000";
 
-char ssid[] = "MEO-9A8E10";
-char pass[] = "e7642fef10";
+char ssid[] = "OppoA94";
+char pass[] = "53e5926286b6";
 
 char keys[ROW_NUM][COLUMN_NUM] = {
   {'1', '2', '3', 'A'},
@@ -46,7 +46,7 @@ int BUZZER_PIN = 26;
 //Touch
 int lastState = 30;
 int currentState;
-const int VALUE_THRESHOLD = 30;
+const int VALUE_THRESHOLD = 10;
 int touchPin = 13;
 
 //Button
@@ -57,14 +57,19 @@ int btnPin = 25;
 BluetoothSerial SerialBT;
 
 //Not using Delay
-const unsigned long executiontime = 10000; 
+const unsigned long executiontime = 10000; // 10 segundos
 unsigned long pasttime = 0;
 unsigned long presenttime = 0;
 
 //LEDS
-const int RED_PIN = 21;
-const int GREEN_PIN = 12;
-const int LIGHT_PIN = 14;
+const int RED_PIN = 33; 
+const int GREEN_PIN = 32;
+const int LIGHT_PIN = 21;
+const int FOTORESIST_PIN = 36;
+
+//Btn wifi
+const int WIFI_PIN = 39;
+bool wifi = false;
 
 BLYNK_WRITE(V0)
 {
@@ -90,8 +95,13 @@ void setup() {
   pinMode(RED_PIN, OUTPUT);
   pinMode(GREEN_PIN, OUTPUT);
   pinMode(LIGHT_PIN, OUTPUT);
+  pinMode(WIFI_PIN, INPUT_PULLUP);
   lock();
-  Blynk.begin(BLYNK_AUTH_TOKEN, ssid, pass);
+  if(digitalRead(WIFI_PIN) == 1){
+    wifi = true;
+    Blynk.begin(BLYNK_AUTH_TOKEN, ssid, pass);
+  }
+  
   SerialBT.begin("ESP32_SECURITY_SYSTEM"); 
 	Serial.println("Ligação disponível");
 }
@@ -99,7 +109,11 @@ void setup() {
 void loop() {
   presenttime = millis();
   // put your main code here, to run repeatedly:
-  Blynk.run();
+  if(wifi){
+    Blynk.run();
+  }
+
+  light();
   keyPad();
   alarme();
   btCode();
@@ -121,6 +135,7 @@ void verifyLock(){
 void unlock()
 {
   alarmOff();
+  desligarLedVermelho();
   Blynk.virtualWrite(V1, 0);
   Blynk.virtualWrite(V2, 0);
   tentativas = 3;
@@ -129,7 +144,7 @@ void unlock()
 
 void lock()
 {
-  alarmOff();
+  ligarLedVermelho();
   btnLastState = LOW;
   tentativas = 3;
   alarmStatus = true;
@@ -212,7 +227,6 @@ void alarme()
 void chao()
 {
   currentState = touchRead(touchPin);
-
   if(lastState >= VALUE_THRESHOLD  && currentState < VALUE_THRESHOLD)
   {
     Blynk.virtualWrite(V1, 1);
@@ -309,12 +323,29 @@ void sendMsg(String msg)
 
 void ligarLedVermelho()
 {
-  digitalWrite(GREEN_PIN, LOW);
-  digitalWrite(RED_PIN, HIGH);
+  analogWrite(GREEN_PIN, 0);
+  analogWrite(RED_PIN, 255);
 }
 
 void desligarLedVermelho()
 {
-  digitalWrite(GREEN_PIN, HIGH);
-  digitalWrite(RED_PIN, LOW);
+  analogWrite(GREEN_PIN, 255);
+  analogWrite(RED_PIN, 0);
+}
+
+void light(){
+  int luz = analogRead(FOTORESIST_PIN);
+  if(luz < 40 )
+  {
+    Blynk.virtualWrite(V4, 1);
+    digitalWrite(LIGHT_PIN, HIGH);
+    Serial.println("Noite");
+  }
+  else
+  {
+    Blynk.virtualWrite(V4, 0);
+    digitalWrite(LIGHT_PIN, LOW);
+    Serial.println("Dia");
+  }
+  
 }
