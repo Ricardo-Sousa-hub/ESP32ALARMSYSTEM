@@ -10,7 +10,7 @@
 
 #define BLYNK_TEMPLATE_ID "TMPL5quwn_Id9"
 #define BLYNK_TEMPLATE_NAME "SecuritySystem"
-#define BLYNK_AUTH_TOKEN "75K3OnbfJZNOwzEhMcWKokC7nBKMLEtf"
+#define BLYNK_AUTH_TOKEN "token_here"
 
 #define BLYNK_PRINT Serial
 
@@ -19,8 +19,8 @@
 const String keyCode = "1234";
 const String masterKeyCode = "0000";
 
-char ssid[] = "OppoA94";
-char pass[] = "53e5926286b6";
+char ssid[] = "network_name";
+char pass[] = "network_password";
 
 char keys[ROW_NUM][COLUMN_NUM] = {
   {'1', '2', '3', 'A'},
